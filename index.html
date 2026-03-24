@@ -24,6 +24,8 @@
 <script type="module">
 const supabaseConfig={url:"https://xrdvqmijgftniizamthf.supabase.co",anonKey:"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhyZHZxbWlqZ2Z0bmlpemFtdGhmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQzNzE4MTQsImV4cCI6MjA4OTk0NzgxNH0.Gi9t6SDcv2CAIUE8SSIue3MHi_QjGO2jL0dhXJAaU_w"};
 const storageKey="equiStudioQuestions";
+const storageVersionKey="equiStudioQuestionsVersion";
+const storageVersion="2026-03-24-clean-start";
 const defaultQuestions=[];
 const state={client:null,isOnlineMode:false,questions:[]};
 const questionForm=document.getElementById("question-form");
@@ -36,6 +38,7 @@ const blockedWords=["cazzo","cazzi","stronzo","stronzi","stronza","stronza","vaf
 function escapeHtml(value){return String(value).replaceAll("&","&amp;").replaceAll("<","&lt;").replaceAll(">","&gt;").replaceAll('"',"&quot;").replaceAll("'","&#39;")}
 function normalizeText(value){return String(value).toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g," ").replace(/[^a-z\s]/g," ")}
 function containsBlockedLanguage(value){const normalized=normalizeText(value);return blockedWords.some((word)=>normalized.includes(normalizeText(word).trim()))}
+function ensureStorageVersion(){if(localStorage.getItem(storageVersionKey)!==storageVersion){localStorage.setItem(storageKey,JSON.stringify(defaultQuestions));localStorage.setItem(storageVersionKey,storageVersion)}}
 function loadLocalQuestions(){const saved=localStorage.getItem(storageKey);if(!saved){localStorage.setItem(storageKey,JSON.stringify(defaultQuestions));return[...defaultQuestions]}try{return JSON.parse(saved)}catch(_error){localStorage.setItem(storageKey,JSON.stringify(defaultQuestions));return[...defaultQuestions]}}
 function saveLocalQuestions(questions){localStorage.setItem(storageKey,JSON.stringify(questions))}
 function isConfiguredForSupabase(){return Boolean(supabaseConfig.url&&supabaseConfig.anonKey)}
@@ -47,6 +50,7 @@ function renderQuestions(){if(!state.questions.length){questionList.innerHTML='<
 questionForm.addEventListener("submit",async function(event){event.preventDefault();const name=document.getElementById("name").value.trim()||"Studente anonimo";const topic=document.getElementById("topic").value;const question=document.getElementById("question").value.trim();if(!question){formStatus.textContent="Prima di inviare, scrivi una domanda.";return}if(containsBlockedLanguage(question)||containsBlockedLanguage(name)){formStatus.textContent="La domanda contiene parole non consentite e non puo essere inviata.";return}try{await createQuestion({id:`q${Date.now()}`,name,topic,question,answer:"",createdAt:new Date().toISOString(),answeredAt:null});questionForm.reset();formStatus.textContent=state.isOnlineMode?"La tua domanda e stata inviata con successo.":"La tua domanda e stata salvata nella versione demo del sito.";await fetchQuestions();renderQuestions()}catch(_error){formStatus.textContent="Non sono riuscito a inviare la domanda. Riprova tra poco."}});
 answerForm.addEventListener("submit",async function(event){event.preventDefault();const selectedId=questionSelect.value;const author=document.getElementById("answer-author").value.trim()||"Utente";const answer=document.getElementById("answer").value.trim();if(!selectedId||!answer){answerStatus.textContent="Scegli una domanda e scrivi una risposta prima di pubblicarla.";return}if(containsBlockedLanguage(answer)||containsBlockedLanguage(author)){answerStatus.textContent="La risposta contiene parole non consentite e non puo essere pubblicata.";return}try{await saveAnswer(selectedId,`${author}: ${answer}`);answerForm.reset();answerStatus.textContent=state.isOnlineMode?"La risposta e stata pubblicata correttamente.":"La risposta e stata salvata nella versione demo del sito.";await fetchQuestions();renderQuestions()}catch(_error){answerStatus.textContent="Non sono riuscito a salvare la risposta. Riprova tra poco."}});
 await initSupabase();
+ensureStorageVersion();
 await fetchQuestions();
 renderQuestions();
 </script>
